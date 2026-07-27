@@ -11,7 +11,7 @@
 
 ---
 
-## 🏛️ Architecture & Tech Stack
+## Architecture & Tech Stack
 
 ### Frontend
 - **Framework**: React 18 with Vite
@@ -37,7 +37,7 @@
 
 ---
 
-## 📂 Project Folder Structure
+## Project Folder Structure
 
 ```text
 SRSense-AI/
@@ -91,7 +91,7 @@ SRSense-AI/
 
 ---
 
-## 🚀 Quick Start & Development
+## Quick Start & Development
 
 ### 1. Run with Docker Compose (Recommended)
 
