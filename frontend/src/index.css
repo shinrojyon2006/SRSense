@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+
+@layer base {
+  body {
+    background-color: var(--color-bg-light);
+    color: var(--color-text-light);
+    font-family: var(--font-primary);
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+
+  .dark body {
+    background-color: var(--color-bg-dark);
+    color: var(--color-text-dark);
+  }
+}

@@ -1,0 +1,68 @@
+services:
+  # ──────────────────────────────────────────────
+  # PostgreSQL 16 Database
+  # ──────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: srsense-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-srsense}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-srsense_secret_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-srsense_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-srsense}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - srsense-network
+
+  # ──────────────────────────────────────────────
+  # FastAPI Backend (Multi-stage)
+  # ──────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: srsense-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-srsense}:${POSTGRES_PASSWORD:-srsense_secret_2026}@db:5432/${POSTGRES_DB:-srsense_db}
+      SECRET_KEY: ${SECRET_KEY:-your-super-secret-key-change-in-production-min-32-chars}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-["http://localhost:5173","http://localhost:3000","http://localhost"]}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - srsense-network
+
+  # ──────────────────────────────────────────────
+  # Nginx Frontend (Multi-stage)
+  # ──────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    container_name: srsense-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - srsense-network
+
+volumes:
+  postgres_data:
+
+networks:
+  srsense-network:
+    driver: bridge
