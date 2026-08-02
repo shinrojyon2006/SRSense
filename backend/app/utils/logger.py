@@ -39,7 +39,7 @@ def get_logger(name: str = "srsense") -> logging.Logger:
         handler.setLevel(log_level)
 
         formatter = logging.Formatter(
-            fmt="%(asctime)s │ %(levelname)-8s │ [%(request_id)s] │ %(name)s │ %(message)s",
+            fmt="%(asctime)s | %(levelname)-8s | [%(request_id)s] | %(name)s | %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
         handler.setFormatter(formatter)

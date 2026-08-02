@@ -1,7 +1,13 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { MainLayout } from '@/layouts/MainLayout';
+import { DashboardLayout } from '@/layouts/DashboardLayout';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { LandingPage } from '@/features/landing';
+import { LoginPage } from '@/features/auth/pages/LoginPage';
+import { RegisterPage } from '@/features/auth/pages/RegisterPage';
+import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
+import { ProjectsPage } from '@/features/projects/pages/ProjectsPage';
 import { Button } from '@/components/ui';
 import { Home } from 'lucide-react';
 
@@ -31,9 +37,20 @@ export const AppRouter: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public Routes with Landing MainLayout */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="*" element={<NotFoundPage />} />
+        </Route>
+
+        {/* Protected Dashboard & Project Routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/projects" element={<ProjectsPage />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

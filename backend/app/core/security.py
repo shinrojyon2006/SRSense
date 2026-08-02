@@ -1,7 +1,7 @@
 """
 Security utilities for JWT token management and password hashing.
 
-Uses python-jose for JWT operations and passlib with bcrypt
+Uses python-jose for JWT operations and bcrypt
 for secure password hashing.
 """
 
@@ -9,25 +9,31 @@ from datetime import datetime, timedelta, timezone
 import secrets
 from typing import Optional
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.core.config import get_settings
 
 settings = get_settings()
 
-# bcrypt password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def _truncate_password(password: str) -> bytes:
+    """Safely encode and truncate password to 72 bytes for bcrypt."""
+    return password.encode("utf-8")[:72]
 
 
 def hash_password(password: str) -> str:
     """Hash a plain-text password using bcrypt."""
-    return pwd_context.hash(password)
+    pwd_bytes = _truncate_password(password)
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain-text password against a bcrypt hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    pwd_bytes = _truncate_password(plain_password)
+    hash_bytes = hashed_password.encode("utf-8")
+    return bcrypt.checkpw(pwd_bytes, hash_bytes)
 
 
 def create_access_token(

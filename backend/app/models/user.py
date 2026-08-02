@@ -39,7 +39,9 @@ class User(Base):
     )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(
-        Enum(UserRole), default=UserRole.DEVELOPER, nullable=False
+        Enum(UserRole, values_callable=lambda x: [e.value for e in x]),
+        default=UserRole.DEVELOPER,
+        nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
