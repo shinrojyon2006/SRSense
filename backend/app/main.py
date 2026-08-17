@@ -24,6 +24,14 @@ from app.modules.system.router import router as system_router
 from app.api.auth import router as auth_router
 from app.api.users import router as users_router
 from app.api.projects import router as projects_router
+from app.api.requirements import router as requirements_router
+from app.api.ai import router as ai_router
+from app.api.documents import router as documents_router
+from app.api.extraction import router as extraction_router
+from app.api.graph import router as graph_router
+from app.api.intelligence import router as intelligence_router
+from app.api.impact import router as impact_router
+from app.api.verification import router as verification_router
 
 settings = get_settings()
 
@@ -73,6 +81,14 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix=api_prefix)
     app.include_router(users_router, prefix=api_prefix)
     app.include_router(projects_router, prefix=api_prefix)
+    app.include_router(requirements_router, prefix=api_prefix)
+    app.include_router(ai_router, prefix=api_prefix)
+    app.include_router(documents_router, prefix=api_prefix)
+    app.include_router(extraction_router, prefix=api_prefix)
+    app.include_router(graph_router, prefix=api_prefix)
+    app.include_router(intelligence_router, prefix=api_prefix)
+    app.include_router(impact_router, prefix=api_prefix)
+    app.include_router(verification_router, prefix=api_prefix)
 
     return app
 

@@ -8,6 +8,7 @@ import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { RegisterPage } from '@/features/auth/pages/RegisterPage';
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
 import { ProjectsPage } from '@/features/projects/pages/ProjectsPage';
+import { ProjectDetailPage } from '@/features/projects/pages/ProjectDetailPage';
 import { Button } from '@/components/ui';
 import { Home } from 'lucide-react';
 
@@ -50,6 +51,7 @@ export const AppRouter: React.FC = () => {
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/projects/:id" element={<ProjectDetailPage />} />
           </Route>
         </Route>
       </Routes>

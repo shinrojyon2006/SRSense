@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   FolderKanban,
   Plus,
@@ -8,12 +9,14 @@ import {
   FileCheck,
   Calendar,
   AlertTriangle,
+  ExternalLink,
 } from 'lucide-react';
 import { Alert, Badge, Button, Card, Input, Modal } from '@/components/ui';
 import { projectService } from '@/services/projectService';
 import { Project, ProjectStatus } from '@/types';
 
 export const ProjectsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -60,13 +63,19 @@ export const ProjectsPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleOpenEditModal = (project: Project) => {
+  const handleOpenEditModal = (project: Project, e: React.MouseEvent) => {
+    e.stopPropagation();
     setEditingProject(project);
     setTitle(project.title);
     setDescription(project.description || '');
     setStatus(project.status);
     setFormError(null);
     setIsModalOpen(true);
+  };
+
+  const handleOpenDeleteModal = (project: Project, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeletingProject(project);
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -202,57 +211,63 @@ export const ProjectsPage: React.FC = () => {
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => (
-            <Card
+            <div
               key={project.id}
-              animate={false}
-              className="flex flex-col justify-between space-y-4 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors"
+              onClick={() => navigate(`/projects/${project.id}`)}
+              className="cursor-pointer transition-transform hover:-translate-y-0.5"
             >
-              <div className="space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white line-clamp-1">
-                    {project.title}
-                  </h3>
-                  {getStatusBadge(project.status)}
-                </div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-3 leading-relaxed">
-                  {project.description || 'No description provided.'}
-                </p>
-              </div>
-
-              <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span className="flex items-center gap-1 font-medium">
-                    <FileCheck className="h-3.5 w-3.5 text-indigo-500" />
-                    {project.requirement_count} Requirements
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3.5 w-3.5" />
-                    {new Date(project.created_at).toLocaleDateString()}
-                  </span>
+              <Card
+                animate={false}
+                className="flex flex-col justify-between space-y-4 hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white line-clamp-1 flex items-center gap-1.5 hover:text-indigo-600 dark:hover:text-indigo-400">
+                      {project.title}
+                      <ExternalLink className="h-3.5 w-3.5 opacity-40 group-hover:opacity-100" />
+                    </h3>
+                    {getStatusBadge(project.status)}
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-3 leading-relaxed">
+                    {project.description || 'No description provided.'}
+                  </p>
                 </div>
 
-                <div className="flex items-center justify-end gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleOpenEditModal(project)}
-                    className="h-8 px-2.5 text-slate-600 dark:text-slate-300"
-                  >
-                    <Edit2 className="h-3.5 w-3.5" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDeletingProject(project)}
-                    className="h-8 px-2.5 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Delete
-                  </Button>
+                <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span className="flex items-center gap-1 font-semibold text-indigo-600 dark:text-indigo-400">
+                      <FileCheck className="h-3.5 w-3.5 text-indigo-500" />
+                      {project.requirement_count} Requirements
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {new Date(project.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleOpenEditModal(project, e)}
+                      className="h-8 px-2.5 text-slate-600 dark:text-slate-300"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleOpenDeleteModal(project, e)}
+                      className="h-8 px-2.5 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+            </div>
           ))}
         </div>
       )}

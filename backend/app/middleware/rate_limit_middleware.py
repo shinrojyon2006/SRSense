@@ -33,7 +33,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: RequestResponseEndpoint
     ):
         # Exempt health check and docs endpoints
-        if request.url.path in ["/", "/docs", "/redoc", "/openapi.json"]:
+        if request.url.path in ["/", "/api/health", "/api/health/liveness", "/docs", "/redoc", "/openapi.json"]:
             return await call_next(request)
 
         client_ip = request.client.host if request.client else "127.0.0.1"

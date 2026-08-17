@@ -1,0 +1,7 @@
+Section 1. Functional Requirements
+FR-101: The SRSense System shall allow users to log in securely.
+NFR-02: The SRSense System shall process requests within 200 milliseconds.
+As a developer, I want to filter requirements by type, so that I can inspect workspace quality.
+The system must increase revenue and business market share.
+1. The database architecture schema shall use PostgreSQL 18.
+* Critical: The system must have urgent mandatory data backup capability.
