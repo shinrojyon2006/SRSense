@@ -40,6 +40,27 @@ class UnauthorizedException(AppException):
         )
 
 
+class ForbiddenError(AppException):
+    """Forbidden operation / authorization failure."""
+
+    def __init__(self, detail: str = "Forbidden"):
+        super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
+
+class NotFoundError(AppException):
+    """Resource not found exception."""
+
+    def __init__(self, detail: str = "Resource not found"):
+        super().__init__(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
+
+
+class ValidationError(AppException):
+    """Data validation / business rule failure exception."""
+
+    def __init__(self, detail: str = "Validation error"):
+        super().__init__(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+
+
 async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
     """Handle custom AppException instances."""
     return JSONResponse(

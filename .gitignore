@@ -29,8 +29,8 @@ frontend/build/
 # Environment & Secrets
 # ========================
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # ========================
 # IDE & System

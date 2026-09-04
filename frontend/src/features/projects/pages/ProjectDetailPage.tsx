@@ -20,6 +20,15 @@ import { ImpactSummaryCard } from '../../impact/components/ImpactSummaryCard';
 import { WhatIfSimulatorModal } from '../../impact/components/WhatIfSimulatorModal';
 import { VerificationSummaryCard } from '../../verification/components/VerificationSummaryCard';
 import { RequirementVerificationPanel } from '../../verification/components/RequirementVerificationPanel';
+import {
+  codebaseService,
+  CodebaseSummary,
+  CodeFileSummary,
+  CodebaseSummaryCard,
+  CodebaseUploadModal,
+  CodeExplorerWorkspace,
+  RequirementCodeLinkModal,
+} from '../../codebase';
 
 import {
   Project,
@@ -36,7 +45,22 @@ import { RequirementTable } from '../components/RequirementTable';
 import { RequirementModal } from '../components/RequirementModal';
 import { AIAnalysisCard } from '../components/AIAnalysisCard';
 import { AISuggestionDiffModal } from '../components/AISuggestionDiffModal';
-import { ArrowLeft, Plus, Search, Layers, AlertCircle, Download, FileText } from 'lucide-react';
+import {
+  CopilotPanel,
+  DoctorModal,
+  ScenarioGeneratorModal,
+} from '@/features/copilot';
+import {
+  ArrowLeft,
+  Plus,
+  Search,
+  Layers,
+  AlertCircle,
+  Download,
+  FileText,
+  Bot,
+  Code2,
+} from 'lucide-react';
 
 export const ProjectDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -52,6 +76,16 @@ export const ProjectDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState('');
+
+  // Sprint 2.0 — Code Intelligence States
+  const [codebaseSummary, setCodebaseSummary] = useState<CodebaseSummary | null>(null);
+  const [isLoadingCodebase, setIsLoadingCodebase] = useState<boolean>(false);
+  const [codeFiles, setCodeFiles] = useState<CodeFileSummary[]>([]);
+  const [isCodeUploadModalOpen, setIsCodeUploadModalOpen] = useState<boolean>(false);
+  const [isCodeExplorerOpen, setIsCodeExplorerOpen] = useState<boolean>(false);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
+  const [linkInitialFileId, setLinkInitialFileId] = useState<string | undefined>();
+  const [linkInitialSymbolId, setLinkInitialSymbolId] = useState<string | undefined>();
 
   // Filters
   const [search, setSearch] = useState('');
@@ -80,6 +114,11 @@ export const ProjectDetailPage: React.FC = () => {
   const [isIntelWorkspaceOpen, setIsIntelWorkspaceOpen] = useState(false);
   const [isImpactSimulatorOpen, setIsImpactSimulatorOpen] = useState(false);
   const [simulatingReq, setSimulatingReq] = useState<Requirement | null>(null);
+
+  // Sprint 1.9 — Engineering AI Copilot States
+  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [doctorReq, setDoctorReq] = useState<Requirement | null>(null);
+  const [scenarioReq, setScenarioReq] = useState<Requirement | null>(null);
   const [isVerifPanelOpen, setIsVerifPanelOpen] = useState(false);
   const [verifReq, setVerifReq] = useState<Requirement | null>(null);
 
@@ -87,6 +126,7 @@ export const ProjectDetailPage: React.FC = () => {
   const [improvingId, setImprovingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Fetch project + requirements (re-runs on filter changes)
   const fetchProjectAndRequirements = useCallback(async () => {
     if (!id) return;
     try {
@@ -99,7 +139,7 @@ export const ProjectDetailPage: React.FC = () => {
       if (selectedPriority !== 'all') params.priority = selectedPriority;
       if (selectedStatus !== 'all') params.status = selectedStatus;
 
-      // 1. Fetch core Project & Requirements workspace
+      // Fetch core Project & Requirements workspace
       const [projData, reqsData] = await Promise.all([
         projectService.getProject(id),
         requirementService.getRequirements(id, params),
@@ -108,26 +148,69 @@ export const ProjectDetailPage: React.FC = () => {
       setProject(projData);
       setRequirements(reqsData);
 
-      if (selectedReqForAnalysis) {
-        const updatedReq = reqsData.find((r) => r.id === selectedReqForAnalysis.id);
-        if (updatedReq) setSelectedReqForAnalysis(updatedReq);
-      }
-
-      // 2. Fetch secondary panel summaries independently without blocking requirements workspace
-      documentService.getDocuments(id).then(setDocuments).catch(() => setDocuments([]));
-      intelligenceService.getSummary(id).then(setIntelSummary).catch(() => setIntelSummary(null));
-      impactService.getSummary(id).then(setImpactSummary).catch(() => setImpactSummary(null));
-      verificationService.getSummary(id).then(setVerifSummary).catch(() => setVerifSummary(null));
+      // Update selected-for-analysis inline from fresh data — no extra API call needed.
+      // selectedReqForAnalysis is NOT in the dep array to prevent infinite re-renders.
+      setSelectedReqForAnalysis((prev) => {
+        if (!prev) return prev;
+        return reqsData.find((r) => r.id === prev.id) ?? prev;
+      });
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Failed to load project requirements workspace');
     } finally {
       setIsLoading(false);
     }
-  }, [id, search, selectedType, selectedPriority, selectedStatus, selectedReqForAnalysis?.id]);
+    // IMPORTANT: selectedReqForAnalysis intentionally excluded from deps to prevent
+    // re-render loops. It is updated inline via the functional setState form above.
+  }, [id, search, selectedType, selectedPriority, selectedStatus]);
 
   useEffect(() => {
     fetchProjectAndRequirements();
   }, [fetchProjectAndRequirements]);
+
+  // Secondary panel fetches — only when project ID changes (not on every filter change).
+  // Separating these prevents 4× request amplification on every search keystroke.
+  const fetchSecondaryPanels = useCallback(async () => {
+    if (!id) return;
+    documentService.getDocuments(id).then(setDocuments).catch(() => setDocuments([]));
+    intelligenceService.getSummary(id).then(setIntelSummary).catch(() => setIntelSummary(null));
+    impactService.getSummary(id).then(setImpactSummary).catch(() => setImpactSummary(null));
+    verificationService.getSummary(id).then(setVerifSummary).catch(() => setVerifSummary(null));
+    setIsLoadingCodebase(true);
+    codebaseService
+      .getSummary(id)
+      .then(setCodebaseSummary)
+      .catch(() => setCodebaseSummary(null))
+      .finally(() => setIsLoadingCodebase(false));
+    codebaseService.listFiles(id).then(setCodeFiles).catch(() => setCodeFiles([]));
+  }, [id]);
+
+  useEffect(() => {
+    fetchSecondaryPanels();
+  }, [fetchSecondaryPanels]);
+
+  // Codebase Handlers
+  const handleUploadCodebase = async (file: File) => {
+    if (!id) return;
+    const summary = await codebaseService.uploadZip(id, file);
+    setCodebaseSummary(summary);
+    const filesList = await codebaseService.listFiles(id);
+    setCodeFiles(filesList);
+  };
+
+  const handleDeleteCodebase = async () => {
+    if (!id) return;
+    if (window.confirm('Are you sure you want to remove the indexed codebase from this project?')) {
+      await codebaseService.deleteCodebase(id);
+      setCodebaseSummary(null);
+      setCodeFiles([]);
+    }
+  };
+
+  const handleOpenLinkModal = (fileId?: string, symbolId?: string) => {
+    setLinkInitialFileId(fileId);
+    setLinkInitialSymbolId(symbolId);
+    setIsLinkModalOpen(true);
+  };
 
   const handleRunIntelligenceScan = async () => {
     if (!id) return;
@@ -326,6 +409,31 @@ export const ProjectDetailPage: React.FC = () => {
               <Button onClick={() => { setEditingReq(null); setIsModalOpen(true); }}>
                 <Plus className="h-4 w-4 mr-1" /> Add Requirement
               </Button>
+
+              {/* Sprint 2.0 — Code Intelligence Action Button */}
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  if (codebaseSummary) {
+                    setIsCodeExplorerOpen(true);
+                  } else {
+                    setIsCodeUploadModalOpen(true);
+                  }
+                }}
+                title="Open Code Intelligence Workspace (Sprint 2.0)"
+              >
+                <Code2 className="h-4 w-4 mr-1 text-indigo-500" /> Codebase
+              </Button>
+
+              {/* Sprint 1.9 — Engineering AI Copilot Action Button */}
+              <button
+                onClick={() => setIsCopilotOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-md shadow-indigo-500/20 transition-all hover:scale-[1.02]"
+                title="Open Engineering AI Copilot (Sprint 1.9)"
+              >
+                <Bot className="h-4 w-4 text-indigo-200" />
+                <span>Engineering Copilot</span>
+              </button>
             </div>
           </div>
         )}
@@ -336,6 +444,15 @@ export const ProjectDetailPage: React.FC = () => {
           <AlertCircle className="h-4 w-4" /> {error}
         </div>
       )}
+
+      {/* Codebase Intelligence Summary Card (Sprint 2.0) */}
+      <CodebaseSummaryCard
+        summary={codebaseSummary}
+        isLoading={isLoadingCodebase}
+        onOpenUpload={() => setIsCodeUploadModalOpen(true)}
+        onOpenExplorer={() => setIsCodeExplorerOpen(true)}
+        onDeleteCodebase={handleDeleteCodebase}
+      />
 
       {/* Verification Compiler Summary Card (Sprint 1.8) */}
       <VerificationSummaryCard summary={verifSummary} />
@@ -374,6 +491,8 @@ export const ProjectDetailPage: React.FC = () => {
         <AIAnalysisCard
           analysis={selectedReqForAnalysis.analysis_result}
           score={selectedReqForAnalysis.quality_score || 0}
+          onOpenDoctor={() => setDoctorReq(selectedReqForAnalysis)}
+          onGenerateScenarios={() => setScenarioReq(selectedReqForAnalysis)}
         />
       )}
 
@@ -566,6 +685,68 @@ export const ProjectDetailPage: React.FC = () => {
           </Button>
         </div>
       </Modal>
+
+      {/* Sprint 1.9 — Engineering AI Copilot Slide-out Drawer */}
+      <CopilotPanel
+        isOpen={isCopilotOpen}
+        onClose={() => setIsCopilotOpen(false)}
+        projectId={id || ''}
+        projectName={project?.title}
+        onSelectRequirement={(reqId) => {
+          const r = requirements.find((req) => req.id === reqId);
+          if (r) setSelectedReqForAnalysis(r);
+        }}
+      />
+
+      {/* Sprint 1.9 — Requirement Doctor Modal */}
+      <DoctorModal
+        isOpen={!!doctorReq}
+        onClose={() => setDoctorReq(null)}
+        projectId={id || ''}
+        requirementId={doctorReq?.id || null}
+        requirementTitle={doctorReq?.title}
+        onApplyImprovement={() => {
+          if (doctorReq) handleImprove(doctorReq);
+        }}
+      />
+
+      {/* Sprint 1.9 — Scenario Generator Modal */}
+      <ScenarioGeneratorModal
+        isOpen={!!scenarioReq}
+        onClose={() => setScenarioReq(null)}
+        projectId={id || ''}
+        requirementId={scenarioReq?.id || null}
+        requirementTitle={scenarioReq?.title}
+      />
+
+      {/* Sprint 2.0 — Codebase Ingestion Upload Modal */}
+      <CodebaseUploadModal
+        isOpen={isCodeUploadModalOpen}
+        onClose={() => setIsCodeUploadModalOpen(false)}
+        onUpload={handleUploadCodebase}
+      />
+
+      {/* Sprint 2.0 — Code Explorer Workspace */}
+      <CodeExplorerWorkspace
+        isOpen={isCodeExplorerOpen}
+        projectId={id || ''}
+        onClose={() => setIsCodeExplorerOpen(false)}
+        onOpenLinkModal={handleOpenLinkModal}
+      />
+
+      {/* Sprint 2.0 — Requirement ↔ Code Linker Modal */}
+      <RequirementCodeLinkModal
+        isOpen={isLinkModalOpen}
+        projectId={id || ''}
+        requirements={requirements}
+        files={codeFiles}
+        initialFileId={linkInitialFileId}
+        initialSymbolId={linkInitialSymbolId}
+        onClose={() => setIsLinkModalOpen(false)}
+        onLinkCreated={() => {
+          fetchSecondaryPanels();
+        }}
+      />
     </div>
   );
 };

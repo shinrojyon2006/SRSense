@@ -35,12 +35,26 @@ from app.models.verification import (
     TestExecutionStatus,
 )
 
+from app.models.project_memory import ProjectMemory
+from app.models.codebase import (
+    Codebase,
+    CodebaseStatus,
+    CodeFile,
+    CodeSymbol,
+    SymbolType,
+    CodeDependency,
+    DependencyType,
+    RequirementCodeLink,
+    LinkType,
+)
+
 __all__ = [
     "User",
     "UserRole",
     "RefreshToken",
     "Project",
     "ProjectStatus",
+    "ProjectMemory",
     "Requirement",
     "RequirementType",
     "RequirementPriority",
@@ -61,4 +75,13 @@ __all__ = [
     "VerificationStatus",
     "TestCaseType",
     "TestExecutionStatus",
+    "Codebase",
+    "CodebaseStatus",
+    "CodeFile",
+    "CodeSymbol",
+    "SymbolType",
+    "CodeDependency",
+    "DependencyType",
+    "RequirementCodeLink",
+    "LinkType",
 ]

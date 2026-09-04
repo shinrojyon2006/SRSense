@@ -34,6 +34,18 @@ class Settings(BaseSettings):
         "http://localhost",
     ]
 
+    # ── AI Provider Configuration ────────────────────────────
+    # Phase B: Environment-driven provider selection.
+    # "heuristic" = deterministic engine (CI-safe, no external calls, default)
+    # "gemini"    = Google Gemini API (requires GEMINI_API_KEY in backend env)
+    # "openai"    = OpenAI API (requires OPENAI_API_KEY in backend env)
+    # SECURITY: Keys MUST be backend-only env vars. Never in frontend, source, or git.
+    AI_PROVIDER: str = "heuristic"
+    GEMINI_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
+    AI_REQUEST_TIMEOUT_SECONDS: int = 30
+    AI_MAX_RETRIES: int = 2
+
     class Config:
         env_file = ".env"
         case_sensitive = True

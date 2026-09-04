@@ -8,8 +8,25 @@ on:
 
 jobs:
   backend-checks:
-    name: Backend Lint & Health Test
+    name: Backend Tests (PostgreSQL)
     runs-on: ubuntu-latest
+
+    # A11 FIX: Provision a real PostgreSQL service — tests need a live DB connection.
+    # Previously there was no DB service, causing connection refused on localhost:5432.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: srsense
+          POSTGRES_PASSWORD: srsense_ci_2026
+          POSTGRES_DB: srsense_test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
@@ -19,16 +36,37 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install Dependencies
+      - name: Install Backend Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
-      - name: Run Health Test
+      - name: Wait for PostgreSQL readiness
+        run: |
+          until pg_isready -h localhost -p 5432 -U srsense; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          echo "PostgreSQL is ready."
+
+      - name: Run Alembic Migrations
         env:
           PYTHONPATH: backend
+          DATABASE_URL: postgresql+asyncpg://srsense:srsense_ci_2026@localhost:5432/srsense_test_db
+          SECRET_KEY: ci-test-secret-key-not-for-production-use
+          AI_PROVIDER: heuristic
         run: |
-          pytest
+          cd backend
+          alembic upgrade head
+
+      - name: Run Backend Tests
+        env:
+          PYTHONPATH: backend
+          DATABASE_URL: postgresql+asyncpg://srsense:srsense_ci_2026@localhost:5432/srsense_test_db
+          SECRET_KEY: ci-test-secret-key-not-for-production-use
+          AI_PROVIDER: heuristic
+        run: |
+          pytest tests/ --tb=short -v --no-header 2>&1
 
   frontend-checks:
     name: Frontend Lint & Build

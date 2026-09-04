@@ -32,6 +32,8 @@ from app.api.graph import router as graph_router
 from app.api.intelligence import router as intelligence_router
 from app.api.impact import router as impact_router
 from app.api.verification import router as verification_router
+from app.api.copilot import router as copilot_router
+from app.api.codebase import router as codebase_router
 
 settings = get_settings()
 
@@ -89,6 +91,8 @@ def create_app() -> FastAPI:
     app.include_router(intelligence_router, prefix=api_prefix)
     app.include_router(impact_router, prefix=api_prefix)
     app.include_router(verification_router, prefix=api_prefix)
+    app.include_router(copilot_router, prefix=api_prefix)
+    app.include_router(codebase_router, prefix=api_prefix)
 
     return app
 

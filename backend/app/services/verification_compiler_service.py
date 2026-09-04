@@ -65,19 +65,48 @@ class VerificationCompilerService:
         return VerificationType.FUNCTIONAL
 
     def _extract_parameters(self, text: str) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]:
-        # Metric, Operator, Threshold, Unit, Population
+        """Extract metric, operator, threshold, unit, and population from requirement description.
+
+        A3 FIX: Expanded patterns to capture 'return...within N ms', 'within N milliseconds',
+        'in N seconds', etc. — not just 'respond/response time/latency'.
+        """
         metric, operator, threshold, unit, population = None, None, None, None, None
 
-        # Regex for response time / latency
-        m_time = re.search(r"(?:respond|response time|latency)\s+(?:within|in)?\s*([<=>]+)?\s*(\d+(?:\.\d+)?)\s*(ms|milliseconds|seconds|sec)", text, re.IGNORECASE)
+        # Pattern 1: Broad response-time / latency — any verb before "within/in N unit"
+        # Matches: "respond within 200ms", "return search results within 200 milliseconds",
+        #          "complete within 500ms", "execute in under 1 second", etc.
+        m_time = re.search(
+            r"(?:respond|response time|latency|return|complete|execute|process|load|render|finish)"
+            r"(?:[^.]{0,60}?)"  # allow some words in between (e.g., "search results")
+            r"(?:within|in(?:\s+under)?)\s*([<=>]+)?\s*(\d+(?:\.\d+)?)\s*(ms|milliseconds?|sec(?:onds?)?)",
+            text,
+            re.IGNORECASE,
+        )
         if m_time:
             metric = "Response Time"
             operator = m_time.group(1) or "<="
             threshold = m_time.group(2)
             unit = m_time.group(3)
 
-        # Regex for password length
-        m_len = re.search(r"password\s+(?:must be|is)?\s*(exactly|at least|minimum|maximum)?\s*(\d+)\s*(characters|chars)", text, re.IGNORECASE)
+        # Pattern 2: Fallback — bare "within N ms" / "in N ms" anywhere in the sentence
+        if not metric:
+            m_bare = re.search(
+                r"\bwithin\s+([<=>]+)?\s*(\d+(?:\.\d+)?)\s*(ms|milliseconds?|sec(?:onds?)?)\b",
+                text,
+                re.IGNORECASE,
+            )
+            if m_bare:
+                metric = "Response Time"
+                operator = m_bare.group(1) or "<="
+                threshold = m_bare.group(2)
+                unit = m_bare.group(3)
+
+        # Pattern 3: Password length
+        m_len = re.search(
+            r"password\s+(?:must be|is)?\s*(exactly|at least|minimum|maximum)?\s*(\d+)\s*(characters?|chars?)",
+            text,
+            re.IGNORECASE,
+        )
         if m_len and not metric:
             metric = "Password Length"
             qual = m_len.group(1) or ""
@@ -85,8 +114,32 @@ class VerificationCompilerService:
             threshold = m_len.group(2)
             unit = m_len.group(3)
 
-        # Regex for population / percentile
-        m_pop = re.search(r"(\d+%\s+of\s+\w+)", text, re.IGNORECASE)
+        # Pattern 4: Availability / uptime percentage
+        m_avail = re.search(
+            r"(\d+(?:\.\d+)?)\s*%\s*(?:uptime|availability|of\s+(?:the\s+time|requests?|calls?))",
+            text,
+            re.IGNORECASE,
+        )
+        if m_avail and not metric:
+            metric = "Availability"
+            operator = ">="
+            threshold = m_avail.group(1)
+            unit = "%"
+
+        # Pattern 5: Interaction limit (e.g., "require no more than 3 user interactions")
+        m_ui = re.search(
+            r"(?:require|in|within|take)\s*(?:no\s+more\s+than|at\s+most|maximum)?\s*([<=>]+)?\s*(\d+)\s*(user\s+interactions?|interactions?|clicks?|steps?|screens?)",
+            text,
+            re.IGNORECASE,
+        )
+        if m_ui and not metric:
+            metric = "Interaction Limit"
+            operator = "<="
+            threshold = m_ui.group(2)
+            unit = m_ui.group(3)
+
+        # Pattern 6: Population / percentile (e.g., "95% of requests", "99% of users")
+        m_pop = re.search(r"(\d+(?:\.\d+)?%\s+of\s+\w+)", text, re.IGNORECASE)
         if m_pop:
             population = m_pop.group(1)
 
@@ -101,13 +154,20 @@ class VerificationCompilerService:
         if not req:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requirement not found")
 
-        text = f"{req.title}. {req.description}"
+        # A9 FIX: Extract parameters from DESCRIPTION ONLY.
+        # Title is used only for verification-type routing, NOT for vague-term detection.
+        # This ensures a title like "Fast System" does not contaminate a measurable description.
+        desc_text = req.description
         verif_type = self._determine_verification_type(req)
-        metric, operator, threshold, unit, population = self._extract_parameters(text)
+        metric, operator, threshold, unit, population = self._extract_parameters(desc_text)
 
         # Evaluate Quality Readiness & Gaps
+        # A9 FIX: is_vague checks description only — NOT the combined title+description.
         missing_elements: List[str] = []
-        is_vague = any(w in text.lower() for w in ["fast", "user friendly", "scalable", "secure enough", "should be quick"])
+        is_vague = any(
+            w in desc_text.lower()
+            for w in ["fast", "user friendly", "user-friendly", "scalable", "secure enough", "should be quick", "intuitive"]
+        )
 
         if metric and threshold:
             readiness = VerificationReadiness.EXPLICIT_MEASURABLE

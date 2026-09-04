@@ -2,6 +2,11 @@
 Pytest global fixtures for SRSense AI testing.
 """
 
+import os
+
+# Ensure deterministic, CI-safe heuristic provider during automated pytest runs
+os.environ.setdefault("AI_PROVIDER", "heuristic")
+
 import pytest_asyncio
 from app.database.session import engine
 
@@ -11,3 +16,4 @@ async def cleanup_db_engine():
     """Ensure database connection pool is disposed cleanly between test functions."""
     yield
     await engine.dispose()
+

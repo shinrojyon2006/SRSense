@@ -1,5 +1,10 @@
 @import "tailwindcss";
+@import "./styles/theme.css";
 
+/* A10 FIX: Tailwind v4 dark mode — class strategy on <html> element.
+   Without this directive, dark: utility classes don't apply when the
+   .dark class is toggled on document.documentElement by ThemeContext. */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
   body {

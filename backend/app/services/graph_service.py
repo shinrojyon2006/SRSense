@@ -3,6 +3,7 @@ Requirement Knowledge Graph Service — Graph Operations, Dependency Traversal,
 Cycle Prevention, Symmetric Conflict Handling, and Heuristic Relationship Discovery.
 """
 
+import re
 from collections import defaultdict, deque
 from typing import Dict, List, Set
 from uuid import UUID, uuid4
@@ -274,6 +275,9 @@ class GraphService:
         res = await self.get_relationships_for_requirement(user, project_id, requirement_id)
         return res.conflicts
 
+    # A6 FIX: Strict requirement ID pattern — only uppercase prefix + hyphen + digits.
+    _VALID_REQ_ID_PATTERN = re.compile(r"^[A-Z]{1,5}-\d{1,5}$")
+
     async def suggest_relationships(
         self, user: User, project_id: UUID
     ) -> SuggestRelationshipsResponse:
@@ -287,14 +291,17 @@ class GraphService:
             for j in range(i + 1, len(reqs)):
                 r1, r2 = reqs[i], reqs[j]
 
-                # Check explicit ID references (e.g. R1 description mentions R2's original_req_id)
-                if r2.original_req_id and r2.original_req_id.lower() in r1.description.lower():
+                # A6 FIX: Validate original_req_id before using as dependency signal.
+                # Only IDs matching pattern like FR-001, NFR-002, REQ-12 are valid.
+                # Words like "User", "System", "Admin" must NOT trigger false dependencies.
+                r2_id = (r2.original_req_id or "").strip()
+                if r2_id and self._VALID_REQ_ID_PATTERN.match(r2_id) and r2_id.lower() in r1.description.lower():
                     suggestions.append(
                         SuggestedRelationshipItem(
                             source_id=r1.id,
                             target_id=r2.id,
                             type=RelationshipType.DEPENDS_ON,
-                            reason=f"Requirement '{r1.title}' explicitly references ID '{r2.original_req_id}' in its text.",
+                            reason=f"Requirement '{r1.title}' explicitly references ID '{r2_id}' in its text.",
                             confidence_score=0.85,
                         )
                     )

@@ -167,6 +167,26 @@ class IntelligenceService:
             suggestions=dtos,
         )
 
+    # ── A6 FIX: Strict Requirement ID Validator ────────────────────────────────────────────
+    # Valid IDs: FR-001, NFR-002, REQ-12, US-014, SYS-999  (uppercase prefix + hyphen + digits)
+    # Invalid:   User, System, Admin, Customer, Payment, Login — these are ordinary words.
+    _VALID_REQ_ID_PATTERN = re.compile(r"^[A-Z]{1,5}-\d{1,5}$")
+
+    def _extract_requirement_id(self, req: "Requirement") -> Optional[str]:
+        """Extract a structured requirement ID from a requirement, or None if not valid.
+
+        A6 FIX: Only returns IDs that match the strict pattern [A-Z]{1,5}-[0-9]{1,5}.
+        Checks original_req_id first, then falls back to title prefix.
+        """
+        raw_id = (req.original_req_id or "").strip()
+        if raw_id and self._VALID_REQ_ID_PATTERN.match(raw_id):
+            return raw_id
+        if req.title:
+            m = re.match(r"^([A-Z]{1,5}-\d{1,5})\b", req.title.strip())
+            if m:
+                return m.group(1)
+        return None
+
     def _detect_all_candidates(self, reqs: List[Requirement]) -> List[Dict]:
         """Engine combining numeric conflict parser, ID reference parser, and constraint checkers."""
         candidates: List[Dict] = []
