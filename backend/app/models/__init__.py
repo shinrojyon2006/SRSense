@@ -47,6 +47,27 @@ from app.models.codebase import (
     RequirementCodeLink,
     LinkType,
 )
+from app.models.code_quality import (
+    CodeReviewReport,
+    CodeReviewFinding,
+    CodeHealthStatus,
+    FindingCategory,
+    FindingSeverity,
+)
+from app.models.code_improvement import (
+    CodeImprovementProposal,
+    ImprovementStatus,
+)
+from app.models.code_improvement_evaluation import (
+    CodeImprovementEvaluation,
+    EvaluationResultClassification,
+)
+from app.models.traceability import (
+    CodeTestArtifact,
+    RequirementTestLink,
+    TestType,
+    TestRelationshipType,
+)
 
 __all__ = [
     "User",
@@ -84,4 +105,17 @@ __all__ = [
     "DependencyType",
     "RequirementCodeLink",
     "LinkType",
+    "CodeReviewReport",
+    "CodeReviewFinding",
+    "CodeHealthStatus",
+    "FindingCategory",
+    "FindingSeverity",
+    "CodeImprovementProposal",
+    "ImprovementStatus",
+    "CodeImprovementEvaluation",
+    "EvaluationResultClassification",
+    "CodeTestArtifact",
+    "RequirementTestLink",
+    "TestType",
+    "TestRelationshipType",
 ]

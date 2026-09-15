@@ -270,21 +270,73 @@ export const WhatIfSimulatorModal: React.FC<WhatIfSimulatorModalProps> = ({
             ) : (
               <div className="space-y-4 animate-in fade-in duration-150">
                 {/* Risk Gauge Header */}
-                <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
-                  <div>
-                    <span className="text-xs text-slate-400 block mb-0.5">Predicted Risk Score:</span>
-                    <span className={`text-xl font-bold px-2.5 py-1 rounded border ${getRiskBadge(simulation.risk_score)}`}>
-                      {simulation.risk_score} / 100 ({simulation.risk_level})
-                    </span>
+                <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs text-slate-400 block mb-0.5">Predicted Risk Score:</span>
+                      <span className={`text-xl font-bold px-2.5 py-1 rounded border ${getRiskBadge(simulation.risk_score)}`}>
+                        {simulation.risk_score} / 100 ({simulation.risk_level})
+                      </span>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-xs text-slate-400 block mb-0.5">Change Classification:</span>
+                      <span className={`text-xs font-bold uppercase px-2.5 py-1 rounded border ${getChangeTypeBadge(simulation.change_type)}`}>
+                        {simulation.detailed_classification || simulation.change_type}
+                      </span>
+                    </div>
                   </div>
 
-                  <div>
-                    <span className="text-xs text-slate-400 block mb-0.5">Change Classification:</span>
-                    <span className={`text-xs font-bold uppercase px-2.5 py-1 rounded border ${getChangeTypeBadge(simulation.change_type)}`}>
-                      {simulation.change_type}
-                    </span>
+                  {/* Sub-Risk Score Breakdown */}
+                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-slate-900">
+                    <div className="bg-slate-900/80 p-2 rounded border border-slate-800 flex justify-between items-center">
+                      <span className="text-slate-400">Intrinsic Change Risk:</span>
+                      <span className="font-bold text-rose-400">{simulation.intrinsic_risk_score ?? 0} pts</span>
+                    </div>
+                    <div className="bg-slate-900/80 p-2 rounded border border-slate-800 flex justify-between items-center">
+                      <span className="text-slate-400">Downstream Impact Risk:</span>
+                      <span className="font-bold text-indigo-400">{simulation.downstream_risk_score ?? 0} pts</span>
+                    </div>
                   </div>
                 </div>
+
+                {/* Change Summary Box */}
+                <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg space-y-1 text-xs">
+                  <div className="font-bold text-slate-300 flex items-center justify-between border-b border-slate-900 pb-1.5 mb-1.5">
+                    <span>Change Summary:</span>
+                    <span className="text-[10px] font-mono text-indigo-400">
+                      {simulation.changed_fields && simulation.changed_fields.length > 0
+                        ? `${simulation.changed_fields.length} field(s) modified`
+                        : 'No fields modified'}
+                    </span>
+                  </div>
+                  {simulation.changed_fields && simulation.changed_fields.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {simulation.changed_fields.map((f) => (
+                        <span key={f} className="text-[10px] font-mono font-bold bg-indigo-950/70 text-indigo-300 px-2 py-0.5 rounded border border-indigo-800/50">
+                          ✓ {f}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-slate-500 italic text-[11px]">Proposal is identical to current specification.</p>
+                  )}
+                </div>
+
+                {/* Detected Constraint Changes */}
+                {simulation.detected_constraint_changes && simulation.detected_constraint_changes.length > 0 && (
+                  <div className="p-3 bg-amber-950/30 border border-amber-800/60 rounded-lg text-xs space-y-1.5">
+                    <p className="font-bold text-amber-300">Detected Constraint / SLA Changes:</p>
+                    <div className="space-y-1 font-mono text-[11px]">
+                      {simulation.detected_constraint_changes.map((cc, idx) => (
+                        <div key={idx} className="p-1.5 bg-slate-950/90 rounded border border-amber-900/40 flex items-center justify-between text-amber-200">
+                          <span>{cc.impact}</span>
+                          <span className="font-bold text-amber-400">{cc.before} → {cc.after}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Direct & Transitive Affected Counts */}
                 <div className="grid grid-cols-2 gap-3 text-xs">

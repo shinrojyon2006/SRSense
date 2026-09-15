@@ -48,3 +48,9 @@ Thumbs.db
 .coverage
 htmlcov/
 .pytest_cache/
+*.tsbuildinfo
+
+# ========================
+# Uploads & Storage
+# ========================
+backend/storage/uploads/

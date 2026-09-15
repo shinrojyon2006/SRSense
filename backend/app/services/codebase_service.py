@@ -126,6 +126,9 @@ class CodebaseService:
 
                 total_lines += parsed.line_count
 
+                meta_json = dict(parsed.metadata_json or {})
+                meta_json["raw_content"] = item.content
+
                 # Create CodeFile entity
                 cf = CodeFile(
                     codebase_id=codebase.id,
@@ -140,7 +143,7 @@ class CodebaseService:
                     exports=parsed.exports,
                     endpoints=parsed.endpoints,
                     db_interactions=parsed.db_interactions,
-                    metadata_json=parsed.metadata_json,
+                    metadata_json=meta_json,
                 )
                 self.db.add(cf)
                 db_code_files.append(cf)

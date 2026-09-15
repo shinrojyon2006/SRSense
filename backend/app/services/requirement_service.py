@@ -67,6 +67,7 @@ class RequirementService:
             source=data.source or "User Input",
             project_id=project_id,
             parent_id=data.parent_id,
+            original_req_id=data.original_req_id,
         )
         self.db.add(requirement)
         project.requirement_count += 1

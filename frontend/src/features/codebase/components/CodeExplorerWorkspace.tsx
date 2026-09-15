@@ -14,6 +14,13 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { codebaseService } from '../api/codebaseService';
+import { traceabilityService } from '../api/traceabilityService';
+import { CodeQualityDashboard } from './CodeQualityDashboard';
+import { TraceabilitySummaryCard } from './TraceabilitySummaryCard';
+import { RequirementTraceabilityTable } from './RequirementTraceabilityTable';
+import { TraceabilityGapPanel } from './TraceabilityGapPanel';
+import { RequirementTraceabilityDrawer } from './RequirementTraceabilityDrawer';
+import { TestSuggestionModal } from './TestSuggestionModal';
 import {
   CodeFileSummary,
   CodeFileDetail,
@@ -21,6 +28,12 @@ import {
   CodeDependency,
   RequirementCodeLink,
 } from '../types/codebase.types';
+import {
+  RequirementTraceabilityItem,
+  TraceabilitySummary,
+  TraceabilityGapsList,
+  TestProposal,
+} from '../types/traceability.types';
 
 interface CodeExplorerWorkspaceProps {
   isOpen: boolean;
@@ -35,7 +48,9 @@ export const CodeExplorerWorkspace: React.FC<CodeExplorerWorkspaceProps> = ({
   onClose,
   onOpenLinkModal,
 }) => {
-  const [activeTab, setActiveTab] = useState<'files' | 'symbols' | 'dependencies' | 'links'>('files');
+  const [activeTab, setActiveTab] = useState<
+    'files' | 'symbols' | 'dependencies' | 'links' | 'quality' | 'traceability'
+  >('files');
 
   // Files Tab State
   const [files, setFiles] = useState<CodeFileSummary[]>([]);
@@ -59,6 +74,17 @@ export const CodeExplorerWorkspace: React.FC<CodeExplorerWorkspaceProps> = ({
   const [links, setLinks] = useState<RequirementCodeLink[]>([]);
   const [isLoadingLinks, setIsLoadingLinks] = useState(false);
 
+  // Traceability Matrix State
+  const [traceabilityItems, setTraceabilityItems] = useState<RequirementTraceabilityItem[]>([]);
+  const [traceabilitySummary, setTraceabilitySummary] = useState<TraceabilitySummary | null>(null);
+  const [traceabilityGaps, setTraceabilityGaps] = useState<TraceabilityGapsList | null>(null);
+  const [isLoadingTraceability, setIsLoadingTraceability] = useState(false);
+  const [isDiscoveringTests, setIsDiscoveringTests] = useState(false);
+  const [selectedTraceabilityItem, setSelectedTraceabilityItem] = useState<RequirementTraceabilityItem | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [testProposal, setTestProposal] = useState<TestProposal | null>(null);
+  const [isLoadingProposal, setIsLoadingProposal] = useState(false);
+
   // Initial Load
   useEffect(() => {
     if (isOpen && projectId) {
@@ -66,6 +92,49 @@ export const CodeExplorerWorkspace: React.FC<CodeExplorerWorkspaceProps> = ({
       loadLinks();
     }
   }, [isOpen, projectId]);
+
+  const loadTraceabilityData = async () => {
+    try {
+      setIsLoadingTraceability(true);
+      const [items, summary, gaps] = await Promise.all([
+        traceabilityService.getRequirementTraceability(projectId),
+        traceabilityService.getTraceabilitySummary(projectId),
+        traceabilityService.getTraceabilityGaps(projectId),
+      ]);
+      setTraceabilityItems(items);
+      setTraceabilitySummary(summary);
+      setTraceabilityGaps(gaps);
+    } catch (err) {
+      console.error('Failed to load traceability matrix:', err);
+    } finally {
+      setIsLoadingTraceability(false);
+    }
+  };
+
+  const handleDiscoverTests = async () => {
+    try {
+      setIsDiscoveringTests(true);
+      await traceabilityService.discoverTests(projectId);
+      await loadTraceabilityData();
+    } catch (err) {
+      console.error('Failed to discover tests:', err);
+    } finally {
+      setIsDiscoveringTests(false);
+    }
+  };
+
+  const handleSuggestTest = async (reqId: string) => {
+    try {
+      setIsLoadingProposal(true);
+      setTestProposal(null);
+      const proposal = await traceabilityService.suggestTestProposal(projectId, reqId);
+      setTestProposal(proposal);
+    } catch (err) {
+      console.error('Failed to suggest test proposal:', err);
+    } finally {
+      setIsLoadingProposal(false);
+    }
+  };
 
   const loadFiles = async (search?: string, lang?: string) => {
     try {
@@ -212,6 +281,29 @@ export const CodeExplorerWorkspace: React.FC<CodeExplorerWorkspaceProps> = ({
               }`}
             >
               Req ↔ Code Links ({links.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('quality')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                activeTab === 'quality'
+                  ? 'bg-white text-indigo-600 shadow-xs dark:bg-slate-700 dark:text-white'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+            >
+              Code Quality & Review
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('traceability');
+                loadTraceabilityData();
+              }}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                activeTab === 'traceability'
+                  ? 'bg-white text-indigo-600 shadow-xs dark:bg-slate-700 dark:text-white'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+            >
+              Traceability Matrix (R→C→T)
             </button>
           </div>
 
@@ -677,8 +769,66 @@ export const CodeExplorerWorkspace: React.FC<CodeExplorerWorkspaceProps> = ({
               </div>
             </div>
           )}
+
+          {activeTab === 'quality' && (
+            <div className="h-full overflow-y-auto">
+              <CodeQualityDashboard projectId={projectId} />
+            </div>
+          )}
+
+          {activeTab === 'traceability' && (
+            <div className="h-full overflow-y-auto p-6 space-y-6 bg-slate-950/40">
+              {isLoadingTraceability ? (
+                <div className="py-20 text-center text-xs text-slate-400">
+                  Loading Traceability Matrix (Requirement → Code → Test)...
+                </div>
+              ) : (
+                <>
+                  <TraceabilitySummaryCard
+                    summary={traceabilitySummary}
+                    onDiscoverTests={handleDiscoverTests}
+                    isDiscovering={isDiscoveringTests}
+                  />
+
+                  <RequirementTraceabilityTable
+                    items={traceabilityItems}
+                    onSelectRequirement={(item) => {
+                      setSelectedTraceabilityItem(item);
+                      setIsDrawerOpen(true);
+                    }}
+                    onSuggestTest={(item) => handleSuggestTest(item.requirement_id)}
+                  />
+
+                  <TraceabilityGapPanel
+                    gapsData={traceabilityGaps}
+                    onSuggestTest={(reqId) => handleSuggestTest(reqId)}
+                  />
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Requirement Traceability Pipeline Drawer */}
+      <RequirementTraceabilityDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => {
+          setIsDrawerOpen(false);
+          setSelectedTraceabilityItem(null);
+        }}
+        item={selectedTraceabilityItem}
+        onSuggestTest={(item) => handleSuggestTest(item.requirement_id)}
+      />
+
+      {/* AI Test Proposal Modal */}
+      <TestSuggestionModal
+        proposal={testProposal}
+        loading={isLoadingProposal}
+        onClose={() => {
+          setTestProposal(null);
+        }}
+      />
     </div>
   );
 };

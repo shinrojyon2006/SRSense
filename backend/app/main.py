@@ -34,6 +34,10 @@ from app.api.impact import router as impact_router
 from app.api.verification import router as verification_router
 from app.api.copilot import router as copilot_router
 from app.api.codebase import router as codebase_router
+from app.api.code_quality import router as code_quality_router
+from app.api.code_improvement import router as code_improvement_router
+from app.api.code_improvement_evaluation import router as code_improvement_evaluation_router
+from app.api.requirement_test_traceability import router as requirement_test_traceability_router
 
 settings = get_settings()
 
@@ -93,6 +97,10 @@ def create_app() -> FastAPI:
     app.include_router(verification_router, prefix=api_prefix)
     app.include_router(copilot_router, prefix=api_prefix)
     app.include_router(codebase_router, prefix=api_prefix)
+    app.include_router(code_quality_router, prefix=api_prefix)
+    app.include_router(code_improvement_router, prefix=api_prefix)
+    app.include_router(code_improvement_evaluation_router, prefix=api_prefix)
+    app.include_router(requirement_test_traceability_router, prefix=api_prefix)
 
     return app
 

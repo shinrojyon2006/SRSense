@@ -15,8 +15,8 @@ class WhatIfSimulationRequest(BaseModel):
     """Payload to simulate a proposed requirement change without database mutation."""
 
     requirement_id: Optional[UUID] = Field(None, description="Optional existing requirement UUID")
-    proposed_title: str = Field(..., min_length=2, max_length=200)
-    proposed_description: str = Field(..., min_length=5, max_length=5000)
+    proposed_title: Optional[str] = Field(None, min_length=2, max_length=200)
+    proposed_description: Optional[str] = Field(None, min_length=5, max_length=5000)
     proposed_type: Optional[RequirementType] = Field(None, description="Proposed requirement type")
     proposed_priority: Optional[RequirementPriority] = Field(None, description="Proposed requirement priority")
     proposed_status: Optional[RequirementStatus] = Field(None, description="Proposed requirement status")
@@ -51,6 +51,11 @@ class WhatIfSimulationResponse(BaseModel):
     conflicts_resolved: List[Dict[str, Any]]
     evidence_reasoning: List[str]
     is_ephemeral: bool = True
+    intrinsic_risk_score: float = 0.0
+    downstream_risk_score: float = 0.0
+    changed_fields: List[str] = Field(default_factory=list)
+    detected_constraint_changes: List[Dict[str, Any]] = Field(default_factory=list)
+    detailed_classification: str = "NO_CHANGE"
 
 
 class ImpactReportResponse(BaseModel):

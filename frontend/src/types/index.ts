@@ -288,6 +288,11 @@ export interface WhatIfSimulationResponse {
   conflicts_resolved: Record<string, any>[];
   evidence_reasoning: string[];
   is_ephemeral: boolean;
+  intrinsic_risk_score?: number;
+  downstream_risk_score?: number;
+  changed_fields?: string[];
+  detected_constraint_changes?: Record<string, any>[];
+  detailed_classification?: string;
 }
 
 export interface ImpactReportResponse {

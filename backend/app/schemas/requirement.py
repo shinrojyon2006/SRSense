@@ -49,6 +49,7 @@ class RequirementCreate(BaseModel):
     version: Optional[str] = Field(default="1.0", max_length=20)
     source: Optional[str] = Field(default="User Input", max_length=100)
     parent_id: Optional[uuid.UUID] = None
+    original_req_id: Optional[str] = Field(default=None, max_length=50)
 
 
 class RequirementUpdate(BaseModel):
